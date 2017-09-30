@@ -93,7 +93,7 @@ class MergingPlugin extends Plugin {
         $config = $this->getConfig();
         
         if(!$this->canBeMaster($master)){
-                ::error(__('Ticket selected for master cannot be one.'));
+            Messages::error(__('Ticket selected for master cannot be one.'));
             return false;
         }
         
@@ -108,11 +108,11 @@ class MergingPlugin extends Plugin {
             if(!$temp)
                 continue;
             if(!$this->canBeChild($temp)){
-                    ::warning(sprintf(__('Ticket #%s cannot be a child.'), $temp->getNumber()));
+                Messages::warning(sprintf(__('Ticket #%s cannot be a child.'), $temp->getNumber()));
                 continue;
             }
             if(!$temp->isClosable()){
-                    ::warning(sprintf(__('Ticket #%s cannot be closed.'), $temp->getNumber()));
+                Messages::warning(sprintf(__('Ticket #%s cannot be closed.'), $temp->getNumber()));
                 continue;
             }
             $tickets[] = $temp;
@@ -121,7 +121,7 @@ class MergingPlugin extends Plugin {
         unset($temp);
         
         if(empty($tickets)){
-                ::error(__('Select at least one viable ticket'));
+            Messages::error(__('Select at least one viable ticket'));
             return false;
         }
         
