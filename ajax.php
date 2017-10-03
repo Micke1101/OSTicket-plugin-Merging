@@ -14,27 +14,27 @@ ini_set('display_errors', '0'); // Set by installer
 ini_set('display_startup_errors', '0'); // Set by installer
 
 //TODO: disable direct access via the browser? i,e All request must have REFER?
-if(!defined('INCLUDE_DIR'))	Http::response(500, 'Server configuration error');
+if(!defined('INCLUDE_DIR'))    Http::response(500, 'Server configuration error');
 
 global $thisstaff;
 if(isset($_POST['a'])){
-	switch($_POST['a']){
-		case 'merge':
-			if($thisstaff && ($master = Ticket::lookup($_POST['master'])) 
-				&& ($ticket = Ticket::lookup($_POST['ticket'])) 
-				&& $master->checkStaffPerm($thisstaff)
-				&& $ticket->checkStaffPerm($thisstaff)){
-				MergingPlugin::merge($master, array($_POST['ticket']=>$_POST['ticket']));
-			}
-			break;
-		case 'split':
-			if($thisstaff && ($master = Ticket::lookup($_POST['master'])) 
-				&& ($ticket = Ticket::lookup($_POST['ticket'])) 
-				&& $master->checkStaffPerm($thisstaff)
-				&& $ticket->checkStaffPerm($thisstaff)){
-				MergingPlugin::split($master, $_POST['ticket']);
-			}
-			break;
-	}
+    switch($_POST['a']){
+        case 'merge':
+            if($thisstaff && ($master = Ticket::lookup($_POST['master'])) 
+                && ($ticket = Ticket::lookup($_POST['ticket'])) 
+                && $master->checkStaffPerm($thisstaff)
+                && $ticket->checkStaffPerm($thisstaff)){
+                MergingPlugin::merge($master, array($_POST['ticket']=>$_POST['ticket']));
+            }
+            break;
+        case 'split':
+            if($thisstaff && ($master = Ticket::lookup($_POST['master'])) 
+                && ($ticket = Ticket::lookup($_POST['ticket'])) 
+                && $master->checkStaffPerm($thisstaff)
+                && $ticket->checkStaffPerm($thisstaff)){
+                MergingPlugin::split($master, $_POST['ticket']);
+            }
+            break;
+    }
 }
  ?>
