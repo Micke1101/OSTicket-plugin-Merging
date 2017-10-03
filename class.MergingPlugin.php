@@ -37,141 +37,107 @@ class MergingPlugin extends Plugin {
             if($thisstaff && $_REQUEST['id'] && ($ticket=Ticket::lookup($_REQUEST['id']))){
 				if(($this->isChild($ticket) || $this->isMaster($ticket))
 					&& preg_match('/<ul.*?class="tabs"(.|\n)*?<\/ul>/', $html, $tabs)
-					&& preg_match('/(<\/div>(\s|\n)*)<div.*id="print-options">/', $html, $lastdiv)
+					&& preg_match('/(<\/div>(\s|\n)*){3}<div.*id="print-options">/', $html, $lastdiv)
 					&& preg_match('/<a.*?href="#post-reply"(.|\n)*?<\/a>/', $html, $postreply)){
-					$newbutton = '<div id="merge" class="attached input" data-toggle="tooltip" data-placement="bottom" title="' . __('Merge') . '" style="display: inline-block;height: 26px;text-align:left">
-                    <select id="masterid" name="masterid" style="width: 250px" class="js-example-basic-single">';
-					
-                            $tickets = TicketModel::objects();
-                            
-                            // -- Open and assigned to me
-                            $assigned = Q::any(array(
-                                'staff_id' => $thisstaff->getId(),
-                            ));
-                            // -- Open and assigned to a team of mine
-                            if ($teams = array_filter($thisstaff->getTeams()))
-                                $assigned->add(array('team_id__in' => $teams));
-                            $visibility = Q::any(new Q(array('status__state'=>'open', $assigned)));
-                            // -- Routed to a department of mine
-                            if (!$thisstaff->showAssignedOnly() && ($depts=$thisstaff->getDepts()))
-                                $visibility->add(array('dept_id__in' => $depts));
-                            $tickets->filter(Q::any($visibility));
-                            
-                            $tickets->filter(array('status__state'=>'open'));
-                            $tickets->values('ticket_id', 'number', 'cdata__subject');
-                            
-                            foreach ($tickets as $T)
-                                $newbutton = $newbutton . "<option value='" . $T['ticket_id'] . "'>" . $T['number'] . " | " . $T['cdata__subject'] . "</option>";
-                    $newbutton = $newbutton . '</select>
-                    <button id="mergebutton" type="submit" class="attached button"><i class="icon-code-fork"></i>
-                    </button>
-                </div>' . $postreply[0];
-					$html = str_replace($postreply[0], $newbutton, $html);
-					$html = str_replace('</head>', '<style>div#merge .select2-selection--single, div#merge .select2-selection__rendered {
-    height: 26px;
-    border-right: none;
-    border-top-right-radius: 0px;
-    border-bottom-right-radius: 0px;
-}
-div#merge .select2-container{
-    margin-right: -1px;
-}</style></head>', $html);
-					$html = str_replace('</body>', '<script>$(document).ready(function() {$("#masterid").select2({
-            placeholder: "' . __('Select a ticket') . '"
-        });$("#masterid").val(\'\');$("#mergebutton").click(function(){
-            $.ajax({
-                type: \'POST\',
-                url: \'../include/plugins/Merging/ajax.php\',
-				data: ({master: ' . $ticket->getId() . ',ticket: $("#masterid").val(),a: \'merge\'}),
-                success: function(data) {
-                    location.reload();
-                }
-            });
-		});});</script></body>', $html);
+					$newbutton = file_get_contents(__DIR__ . '/templates/merge-view.php');
+					$newbuttonoptions = '';
+					$tickets = TicketModel::objects();
+
+					// -- Open and assigned to me
+					$assigned = Q::any(array(
+						'staff_id' => $thisstaff->getId(),
+					));
+					// -- Open and assigned to a team of mine
+					if ($teams = array_filter($thisstaff->getTeams()))
+						$assigned->add(array('team_id__in' => $teams));
+					$visibility = Q::any(new Q(array('status__state'=>'open', $assigned)));
+					// -- Routed to a department of mine
+					if (!$thisstaff->showAssignedOnly() && ($depts=$thisstaff->getDepts()))
+						$visibility->add(array('dept_id__in' => $depts));
+					$tickets->filter(Q::any($visibility));
+
+					$tickets->filter(array('status__state'=>'open'));
+					$tickets->values('ticket_id', 'number', 'cdata__subject');
+
+					foreach ($tickets as $T)
+						$newbuttonoptions = $newbuttonoptions . "<option value='" . $T['ticket_id'] . "'>" . $T['number'] . " | " . $T['cdata__subject'] . "</option>";
+					$newbutton = str_replace("{MERGING_OPTIONS}", $newbuttonoptions, $newbutton);
+					$newbutton = str_replace("{MERGING_TOOLTIP}", __('Merge'), $newbutton);
+					$newbutton = str_replace("{MERGING_PLACEHOLDER}", __('Select a ticket'), $newbutton);
+					$newbutton = str_replace("{MERGING_TICKET_ID}", $ticket->getId(), $newbutton);
+					$html = str_replace($postreply[0], $newbutton . $postreply[0], $html);
 
 					$newTabs = str_replace('</ul>', '<li><a id="ticket-thread-tab" href="#relations">' . __('Relations') . '</a></li></ul>', $tabs[0]);
-					$relationContent = '<div id="relations" class="tab_content" style="display:none">';
-					if($this->isMaster($ticket)){ //<h3> Child tickets </h3>
-						$relationContent = $relationContent . '<h3> ' . __('Child tickets') . ' </h3>
-						<table class="list" border="0" cellspacing="1" cellpadding="2" width="940">
-						<thead>
-							<tr>
-								<th width="7.4%">' . __('Number') . '</th>
-								<th width="14.6%">' . __('Date Merged') . '</th>
-								<th width="29.8%">' . __('Subject') . '</th>
-								<th width="18.1%">' . __('From') . '</th>
-								<th width="16%">' . __('Closed By') . '</th>
-								<th width="2%">
-								</th>
-							</tr>
-						</thead>
-						<tbody>';
+					$relationContent = '';
+					if($this->isMaster($ticket)){
+						$relationContent = file_get_contents(__DIR__ . '/templates/relationstab-master.php');
+						$relationContentChildren = '';
 						$children = $this->getChildren($ticket);
 						foreach ($children as $T) {
-							$relationContent = $relationContent . '<tr id="' . $T->getId() . '">
+							$relationContentChildren = $relationContentChildren . '<tr id="' . $T->getId() . '">
 									<td nowrap>
 										<a class="Icon ' . strtolower($T->getSource()) . 'Ticket preview"
 										title="Preview Ticket"
 										href="tickets.php?id=' . $T->getId() . '"
 										data-preview="#tickets/' . $T->getId() . '/preview"
-									>' . $T->getNumber() . '</a></td>
+										>' . $T->getNumber() . '</a>
+									</td>
 									<td align="center" nowrap>' . (Format::datetime($this->getDateMerged($T)) ?: $date_fallback) . '</td>
-									<td><div style="max-width: 279px; max-height: 1.2em"
+									<td>
+										<div style="max-width: 279px; max-height: 1.2em"
 										class="link truncate"
 										href="tickets.php?id=' . $T->getId() . '">' . $T->getSubject() . '</div>
 									</td>
-									<td nowrap><div><span class="truncate">' . Format::htmlchars($T->getDeptName()) . '</span></div></td>
-									<td nowrap><div><span class="truncate">' . (Format::htmlchars($T->getStaff() ? $T->getStaff()->getName() : __('Unknown'))) . '</span></div></td>
+									<td nowrap>
+										<div>
+											<span class="truncate">' . Format::htmlchars($T->getDeptName()) . '</span>
+										</div>
+									</td>
+									<td nowrap>
+										<div>
+											<span class="truncate">' . (Format::htmlchars($T->getStaff() ? $T->getStaff()->getName() : __('Unknown'))) . '</span>
+										</div>
+									</td>
 									<td nowrap>
 										<div data-toggle="tooltip" title="' . __('Split') . '" style="height: 26px;">
 											<button type="submit" class="action-button" onclick="$.ajax({
-                type: \'POST\',
-                url: \'../include/plugins/Merging/ajax.php\',
-				data: ({master: ' . $ticket->getId() . ',ticket: ' . $T->getId() . ',a: \'split\'}),
-                success: function(data) {
-                    location.reload();
-                }
-            });">
+												type: \'POST\',
+												url: \'../include/plugins/Merging/ajax.php\',
+												data: ({master: ' . $ticket->getId() . ',ticket: ' . $T->getId() . ',a: \'split\'}),
+												success: function(data) {
+												location.reload();
+												}
+												});">
 												<i class="icon-trash"></i>
 											</button>
 										</div>
 									</td>
 								</tr>';
 						}
+						$relationContent = str_replace("{MERGING_CHILD_TICKETS}", $relationContentChildren, $relationContent);
+						$relationContent = str_replace("{MERGING_TRANSLATE_CHILD_TICKETS}", __('Child tickets'), $relationContent);
 					} else {
+						$relationContent = file_get_contents(__DIR__ . '/templates/relationstab-child.php');
 						$master = $this->getMaster($ticket);
-						$relationContent = $relationContent . '<h3> ' . __('Master ticket') . ': </h3>
-							<table border="0" cellspacing="" cellpadding="4" width="100%">
-								<tbody>
-									<tr>
-										<th width="100">Number:</th>
-										<td><a class="Icon ' . strtolower($master->getSource()) . 'Ticket preview"
-											title="Preview Ticket"
-											href="tickets.php?id=' . $master->getId() . '"
-											data-preview="#tickets/' . $master->getId() . '/preview"
-											>' . $master->getNumber() . '</a>
-										</td>
-									</tr>
-									<tr>
-										<th>Priority:</th>
-										<td>' . $master->getPriority() . '</td>
-									</tr>
-									<tr>
-										<th>Department:</th>
-										<td>' . $master->getDeptName() . '</td>
-									</tr>
-									<tr>
-										<th>Subject:</th>
-										<td>' . $master->getSubject() . '</td>
-									</tr>
-									<tr>
-										<th>Merge Date:</th>
-										<td>' . $this->getDateMerged($ticket) . '</td>
-									</tr>';
+						$relationContent = str_replace("{MERGING_ID}", $master->getId(), $relationContent);
+						$relationContent = str_replace("{MERGING_SOURCE}", strtolower($master->getSource()), $relationContent);
+						$relationContent = str_replace("{MERGING_NUMBER}", $master->getNumber(), $relationContent);
+						$relationContent = str_replace("{MERGING_PRIORITY}", $master->getPriority(), $relationContent);
+						$relationContent = str_replace("{MERGING_DEPARTMENT}", $master->getDeptName(), $relationContent);
+						$relationContent = str_replace("{MERGING_SUBJECT}", $master->getSubject(), $relationContent);
+						$relationContent = str_replace("{MERGING_DATE_MERGED}", $this->getDateMerged($ticket), $relationContent);
+						$relationContent = str_replace("{MERGING_TRANSLATE_MASTER_TICKET}", __('Master ticket'), $relationContent);
 					}
-					$mergeTab = str_replace('</div>', $relationContent . '</tbody></table></div>', $lastdiv[0]);
+					$relationContent = str_replace("{MERGING_TRANSLATE_NUMBER}", __('Number'), $relationContent);
+					$relationContent = str_replace("{MERGING_TRANSLATE_PRIORITY}", __('Priority'), $relationContent);
+					$relationContent = str_replace("{MERGING_TRANSLATE_DEPARTMENT}", __('Department'), $relationContent);
+					$relationContent = str_replace("{MERGING_TRANSLATE_SUBJECT}", __('Subject'), $relationContent);
+					$relationContent = str_replace("{MERGING_TRANSLATE_DATE_MERGED}", __('Date merged'), $relationContent);
+					$relationContent = str_replace("{MERGING_TRANSLATE_FROM}", __('From'), $relationContent);
+					$relationContent = str_replace("{MERGING_TRANSLATE_CLOSED_BY}", __('Closed by'), $relationContent);
+					
 					$html = str_replace($tabs[0], $newTabs, $html);
-					$html = str_replace($lastdiv[0], $mergeTab, $html);
+					$html = str_replace($lastdiv[0], $relationContent . $lastdiv[0], $html);
 				}
 				if($this->isChild($ticket))
 					$html = preg_replace('/(?<=' . $ticket->getSubject() . ').*?(?=<\/h3>)/',
@@ -228,7 +194,7 @@ div#merge .select2-container{
     
     function merge($master, $tids){
         global $thisstaff;
-        //$config = MergingPlugin::getConfig();
+        $config = new PluginConfig($config_class);
         
         if(!MergingPlugin::canBeMaster($master)){
             Messages::error(__('Ticket selected for master cannot be one.'));
@@ -248,10 +214,10 @@ div#merge .select2-container{
                 Messages::warning(sprintf(__('Ticket #%s cannot be a child.'), $temp->getNumber()));
                 continue;
             }
-            /*if(!$temp->isClosable()){
+            if(!$temp->isCloseable()){
                 Messages::warning(sprintf(__('Ticket #%s cannot be closed.'), $temp->getNumber()));
                 continue;
-            }*/
+            }
             $tickets[] = $temp;
         }
         
@@ -263,9 +229,9 @@ div#merge .select2-container{
         }
         
         foreach($tickets as $temp){
-            $temp->setStatus(TicketStatus::lookup(/*$config->get('childstatus')*/3));
+            $temp->setStatus(TicketStatus::lookup($config->get('childstatus')));
             
-            if(/*$config->get('copyrecipients')*/false){
+            if($config->get('copyrecipients')){
                 $master->addCollaborator($temp->getUser(), array(), $error, true);
                 if ($collabs = $temp->getThread()->getParticipants()) {
                     foreach ($collabs as $c)
