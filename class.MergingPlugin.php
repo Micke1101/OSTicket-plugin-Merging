@@ -167,20 +167,13 @@ class MergingPlugin extends Plugin {
     function insertSql(){
         $result = false;
         $sql = "CREATE TABLE IF NOT EXISTS `" . TICKET_RELATION_TABLE . "` (
-            `id` int(11) NOT NULL,
+            `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
             `agent_id` int(11) NOT NULL,
             `master_id` int(11) NOT NULL,
             `ticket_id` int(11) NOT NULL,
-            `date_merged` datetime NOT NULL
+            `date_merged` datetime NOT NULL,
+			PRIMARY KEY (`id`)
         );";
-        $result = db_query($sql);
-        if(!$result)
-            return $result;
-        $sql = "ALTER TABLE `" . TICKET_RELATION_TABLE . "` ADD PRIMARY KEY (`id`);";
-        $result = db_query($sql);
-        if(!$result)
-            return $result;
-        $sql = "ALTER TABLE `" . TICKET_RELATION_TABLE . "` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;";
         $result = db_query($sql);
         if(!$result)
             return $result;
