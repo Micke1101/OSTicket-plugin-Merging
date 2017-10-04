@@ -35,10 +35,7 @@ class MergingPlugin extends Plugin {
             $html = ob_get_clean();
             $ticket = null;
             if($thisstaff && $_REQUEST['id'] && ($ticket=Ticket::lookup($_REQUEST['id']))){
-                if(($this->isChild($ticket) || $this->isMaster($ticket))
-                    && preg_match('/<ul.*?class="tabs"(.|\n)*?<\/ul>/', $html, $tabs)
-                    && preg_match('/(<\/div>(\s|\n)*){3}<div.*id="print-options">/', $html, $lastdiv)
-                    && preg_match('/<a.*?href="#post-reply"(.|\n)*?<\/a>/', $html, $postreply)){
+                if(preg_match('/<a.*?href="#post-reply"(.|\n)*?<\/a>/', $html, $postreply)){
                     $newbutton = file_get_contents(__DIR__ . '/templates/merge-view.php');
                     $newbuttonoptions = '';
                     $tickets = TicketModel::objects();
@@ -66,7 +63,10 @@ class MergingPlugin extends Plugin {
                     $newbutton = str_replace("{MERGING_PLACEHOLDER}", __('Select a ticket'), $newbutton);
                     $newbutton = str_replace("{MERGING_TICKET_ID}", $ticket->getId(), $newbutton);
                     $html = str_replace($postreply[0], $newbutton . $postreply[0], $html);
-
+                }
+                if(($this->isChild($ticket) || $this->isMaster($ticket))
+                    && preg_match('/<ul.*?class="tabs"(.|\n)*?<\/ul>/', $html, $tabs)
+                    && preg_match('/(<\/div>(\s|\n)*){3}<div.*id="print-options">/', $html, $lastdiv)){
                     $newTabs = str_replace('</ul>', '<li><a id="ticket-thread-tab" href="#relations">' . __('Relations') . '</a></li></ul>', $tabs[0]);
                     $relationContent = '';
                     if($this->isMaster($ticket)){
@@ -172,7 +172,7 @@ class MergingPlugin extends Plugin {
             `master_id` int(11) NOT NULL,
             `ticket_id` int(11) NOT NULL,
             `date_merged` datetime NOT NULL,
-			PRIMARY KEY (`id`)
+            PRIMARY KEY (`id`)
         );";
         $result = db_query($sql);
         if(!$result)
