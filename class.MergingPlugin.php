@@ -141,12 +141,10 @@ class MergingPlugin extends Plugin {
                 }
                 if($this->isChild($ticket))
                     $html = preg_replace('/(?<=' . $ticket->getSubject() . ').*?(?=<\/h3>)/',
-                        ' - ' . sprintf(__('CHILD'),
-                        $this->getMaster($ticket)->getId()), $html);
+                        ' - ' . __('CHILD'), $html);
                 elseif($this->isMaster($ticket))
                     $html = preg_replace('/(?<=' . $ticket->getSubject() . ').*?(?=<\/h3>)/',
-                        ' - ' . sprintf(__('MASTER'),
-                        count($this->getChildren($ticket))), $html);
+                        ' - ' . __('MASTER'), $html);
             }
             print $html;
         });
