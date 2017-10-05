@@ -50,7 +50,7 @@ class MergingPlugin extends Plugin {
                             '/(<\/div>(\s|\n)*){3}<div.*id="print-options">/',
                             $this->getRelationsTab($ticket));
                     }
-                } else {
+                } else if(strpos($_SERVER['REQUEST_URI'], "tickets.php")){
                     $html = $this->addContentAfter($html,
                         '/<div class="pull-right flush-right">/',
                         $this->getActions($thisstaff));
