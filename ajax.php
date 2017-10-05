@@ -40,6 +40,13 @@ if(isset($_POST['a'])){
                 MergingPlugin::massSplit($_POST['tickets']);
             }
             break;
+        case 'massmerge':
+            if($thisstaff && ($master = Ticket::lookup($_POST['master']))
+                && isset($_POST['tickets'])){
+                error_log(print_r("test", true));
+                MergingPlugin::merge($master, $_POST['tickets']);
+            }
+            break;
     }
 }
  ?>

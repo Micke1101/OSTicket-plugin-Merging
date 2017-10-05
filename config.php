@@ -31,13 +31,17 @@ class MergingPluginConfig extends PluginConfig
     function getOptions()
     {
         list ($__, $_N) = self::translate();
+		$statuses = array();
+		foreach(TicketStatusList::getStatuses() as $status){
+			$statuses[$status->getId()] = $status->getName();
+		}
         return array(
             'childstatus' => new ChoiceField([
                 'label' => $__('Child status'),
                 'required' => true,
                 'hint' => $__('What status do you want child tickets to get.'),
                 'default' => '',
-                'choices' => TicketStatusList::getStatuses()
+                'choices' => $statuses
             ]),
             'copyrecipients' => new BooleanField([
                 'label' => $__('Copy recipients'),

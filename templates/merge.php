@@ -15,14 +15,14 @@
             if (count) {
                 var tids = $('.ckb:checked', $form).map(function() {
                     return this.value;
-                }).get();
+                }).get().join(',');
                 $.ajax({
                     type: 'POST',
                     url: '../include/plugins/Merging/ajax.php',
                     data: ({
                         master: $("#masterid").val(),
-                        ticket: tids,
-                        a: 'merge'
+                        tickets: tids,
+                        a: 'massmerge'
                     }),
                     success: function(data) {
                         window.location.href=window.location.href;
