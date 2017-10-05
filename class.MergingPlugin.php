@@ -34,21 +34,26 @@ class MergingPlugin extends Plugin {
             global $thisstaff;
             $html = ob_get_clean();
             $ticket = null;
-            if($thisstaff && $_REQUEST['id'] && ($ticket=Ticket::lookup($_REQUEST['id']))){
-                //
-                $html = $this->addContentBefore($html,
-                    '/<a.*?href="#post-reply"(.|\n)*?<\/a>/',
-                    $this->getViewMergeAction($thisstaff, $ticket));
-                if($this->isChild($ticket) || $this->isMaster($ticket)){
-                    $html = $this->addContentAfter($html,
-                        '/<ul.*?class="tabs"(.|\n)*?(?=<\/ul>)/',
-                        '<li><a id="ticket-thread-tab" href="#relations">' .
-                        __('Relations') . '</a></li>');
-                    $html = preg_replace('/(?<=' . $ticket->getSubject() . ').*?(?=<\/h3>)/',
-                        ' - ' . ($this->isMaster($ticket) ? __('MASTER') : __('CHILD')), $html);
+            if($thisstaff){
+                if($_REQUEST['id'] && ($ticket=Ticket::lookup($_REQUEST['id']))){
                     $html = $this->addContentBefore($html,
-                        '/(<\/div>(\s|\n)*){3}<div.*id="print-options">/',
-                        $this->getRelationsTab($ticket));
+                        '/<a.*?href="#post-reply"(.|\n)*?<\/a>/',
+                        $this->getActions($thisstaff, $ticket));
+                    if($this->isChild($ticket) || $this->isMaster($ticket)){
+                        $html = $this->addContentAfter($html,
+                            '/<ul.*?class="tabs"(.|\n)*?(?=<\/ul>)/',
+                            '<li><a id="ticket-thread-tab" href="#relations">' .
+                            __('Relations') . '</a></li>');
+                        $html = preg_replace('/(?<=' . $ticket->getSubject() . ').*?(?=<\/h3>)/',
+                            ' - ' . ($this->isMaster($ticket) ? __('MASTER') : __('CHILD')), $html);
+                        $html = $this->addContentBefore($html,
+                            '/(<\/div>(\s|\n)*){3}<div.*id="print-options">/',
+                            $this->getRelationsTab($ticket));
+                    }
+                } else {
+                    $html = $this->addContentAfter($html,
+                        '/<div class="pull-right flush-right">/',
+                        $this->getActions($thisstaff));
                 }
             }
             print $html;
@@ -100,8 +105,12 @@ class MergingPlugin extends Plugin {
         return $html;
     }
     
-    function getViewMergeAction($staff, $ticket){
-        $result = file_get_contents(__DIR__ . '/templates/merge-view.php');
+    function getActions($staff, $ticket=null){
+        $result = '';
+        if($ticket)
+            $result = file_get_contents(__DIR__ . '/templates/merge-view.php');
+        else
+            $result = file_get_contents(__DIR__ . '/templates/merge.php');
         $tickets = TicketModel::objects();
 
         // -- Open and assigned to me
@@ -126,7 +135,8 @@ class MergingPlugin extends Plugin {
         $result = str_replace("{MERGING_OPTIONS}", $options, $result);
         $result = str_replace("{MERGING_TOOLTIP}", __('Merge'), $result);
         $result = str_replace("{MERGING_PLACEHOLDER}", __('Select a ticket'), $result);
-        $result = str_replace("{MERGING_TICKET_ID}", $ticket->getId(), $result);
+        if($ticket)
+            $result = str_replace("{MERGING_TICKET_ID}", $ticket->getId(), $result);
         return $result;
     }
     
@@ -217,7 +227,7 @@ class MergingPlugin extends Plugin {
         }
         
         $tickets = array();
-        foreach($tids as $key => $tid){
+        foreach(explode(',', $tids) as $tid){
             //Master ticket can't be child ticket aswell.
             if($tid == $master->getId())
                 continue;

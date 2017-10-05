@@ -21,10 +21,10 @@ if(isset($_POST['a'])){
     switch($_POST['a']){
         case 'merge':
             if($thisstaff && ($master = Ticket::lookup($_POST['master'])) 
-                && ($ticket = Ticket::lookup($_POST['ticket'])) 
+                && ($ticket = Ticket::lookup($_POST['ticket']))
                 && $master->checkStaffPerm($thisstaff)
                 && $ticket->checkStaffPerm($thisstaff)){
-                MergingPlugin::merge($master, array($_POST['ticket']=>$_POST['ticket']));
+                MergingPlugin::merge($master, $_POST['ticket']);
             }
             break;
         case 'split':
@@ -33,6 +33,11 @@ if(isset($_POST['a'])){
                 && $master->checkStaffPerm($thisstaff)
                 && $ticket->checkStaffPerm($thisstaff)){
                 MergingPlugin::split($master, $_POST['ticket']);
+            }
+            break;
+        case 'masssplit':
+            if($thisstaff && isset($_POST['tickets'])){
+                MergingPlugin::massSplit($_POST['tickets']);
             }
             break;
     }
