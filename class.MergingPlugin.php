@@ -219,7 +219,8 @@ class MergingPlugin extends Plugin {
     
     function merge($master, $tids){
         global $thisstaff;
-        $config = MergingPlugin::getConfig();
+        $mergingplugin = new MergingPlugin;
+        $config = $mergingplugin->getConfig();
         
         if(!MergingPlugin::canBeMaster($master)){
             Messages::error(__('Ticket selected for master cannot be one.'));
