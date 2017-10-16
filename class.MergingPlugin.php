@@ -55,6 +55,7 @@ class MergingPlugin extends Plugin {
                         '/<div class="pull-right flush-right">/',
                         $this->getActions($thisstaff));
                 }
+				$result = str_replace("{MERGING_INSTALL_PATH}", self::getInstallPath(), $result);
             }
             print $html;
         });
@@ -186,7 +187,7 @@ class MergingPlugin extends Plugin {
                     <div data-toggle="tooltip" title="' . __('Split') . '" style="height: 26px;">
                         <button type="submit" class="action-button" onclick="$.ajax({
                             type: \'POST\',
-                            url: \'../include/plugins/Merging/ajax.php\',
+                            url: \'../include/{MERGING_INSTALL_PATH}/ajax.php\',
                             data: ({master: ' . $ticket->getId() . ',ticket: ' . $T->getId() . ',a: \'split\'}),
                             success: function(data) {
                             location.reload();
@@ -222,7 +223,7 @@ class MergingPlugin extends Plugin {
         $mergingplugin = new MergingPlugin;
         $config = $mergingplugin->getConfig();
         
-        if(!MergingPlugin::canBeMaster($master)){
+        if(!self::canBeMaster($master)){
             Messages::error(__('Ticket selected for master cannot be one.'));
             return false;
         }
@@ -236,7 +237,7 @@ class MergingPlugin extends Plugin {
             $temp = Ticket::lookup($tid);
             if(!$temp)
                 continue;
-            if(!MergingPlugin::canBeChild($temp)){
+            if(!self::canBeChild($temp)){
                 Messages::warning(sprintf(__('Ticket #%s cannot be a child.'), $temp->getNumber()));
                 continue;
             }
@@ -268,10 +269,10 @@ class MergingPlugin extends Plugin {
             $sql='INSERT INTO '.TICKET_RELATION_TABLE.' (`id`, `agent_id`, `master_id`, `ticket_id`, `date_merged`)
                 VALUES(NULL, '.$thisstaff->getId().', '.$master->getId().', '.$temp->getId().', NOW())';
             db_query($sql);
-            MergingPlugin::setChild($temp, true);
+            self::setChild($temp, true);
             $master->logEvent('merged', array('child' => $temp->getSubject(), 'id' => $temp->getId()));
         }
-        MergingPlugin::setMaster($master, true);
+        self::setMaster($master, true);
         return true;
     }
     
@@ -280,15 +281,15 @@ class MergingPlugin extends Plugin {
             return false;
         
         $ticket = Ticket::lookup($tid);
-        if(!$ticket || !MergingPlugin::isChild($ticket))
+        if(!$ticket || !self::isChild($ticket))
             return false;
         
         $sql='DELETE FROM '.TICKET_RELATION_TABLE.' WHERE master_id = ' . $master->getId() . ' AND ticket_id = ' . $tid;
         db_query($sql);
-        MergingPlugin::setChild($ticket, false);
+        self::setChild($ticket, false);
         
-        if(!MergingPlugin::getChildren($master))
-            MergingPlugin::setMaster($master, false);
+        if(!self::getChildren($master))
+            self::setMaster($master, false);
         
         $master->logEvent('split', array('child' => $ticket->getSubject(), 'id' => $tid));
         return true;
@@ -300,11 +301,11 @@ class MergingPlugin extends Plugin {
         foreach($tids as $key => $tid){
             if(!($temp = Ticket::lookup($tid)))
                 continue;
-            if(MergingPlugin::isMaster($temp))
-                foreach(MergingPlugin::getChildren($temp) as $ticket)
-                    MergingPlugin::split($temp, $ticket->getId());
-            else if(MergingPlugin::isChild($temp))
-                MergingPlugin::split(MergingPlugin::getMaster($temp), $tid);
+            if(self::isMaster($temp))
+                foreach(self::getChildren($temp) as $ticket)
+                    self::split($temp, $ticket->getId());
+            else if(self::isChild($temp))
+                self::split(self::getMaster($temp), $tid);
             else
                 Messages::warning(sprintf(__('Ticket #%s is not merged.'), $temp->getNumber()));
         }
@@ -315,15 +316,15 @@ class MergingPlugin extends Plugin {
         if(!isset($ticket->master)){
             $sql='SELECT ticket_id FROM '.TICKET_RELATION_TABLE.' WHERE master_id = ' . $ticket->getId();
             if($res=db_query($sql))
-                MergingPlugin::setMaster($ticket, db_num_rows($res));
+                self::setMaster($ticket, db_num_rows($res));
         }
         return $ticket->master;
     }
     
     function canBeMaster($ticket){
-        if(MergingPlugin::isMaster($ticket))
+        if(self::isMaster($ticket))
             return true;
-        if(MergingPlugin::isChild($ticket))
+        if(self::isChild($ticket))
             return false;
         return true;
     }
@@ -334,10 +335,10 @@ class MergingPlugin extends Plugin {
             
             if($res=db_query($sql)){
                 $nr = db_num_rows($res);
-                MergingPlugin::setChild($ticket, $nr);
+                self::setChild($ticket, $nr);
                 if($nr){
                     list($tid, $datem) = db_fetch_row($res);
-                    MergingPlugin::setDateMerged($ticket, $datem);
+                    self::setDateMerged($ticket, $datem);
                 }
             }
         }
@@ -345,7 +346,7 @@ class MergingPlugin extends Plugin {
     }
     
     function canBeChild($ticket){
-        return !MergingPlugin::isMaster($ticket) && !MergingPlugin::isChild($ticket);
+        return !self::isMaster($ticket) && !self::isChild($ticket);
     }
     
     function setMaster($ticket, $var){
@@ -357,7 +358,7 @@ class MergingPlugin extends Plugin {
     }
     
     function getDateMerged($ticket){
-        return (!MergingPlugin::isChild($ticket) || !isset($ticket->dateMerged)) ? false : $ticket->dateMerged;
+        return (!self::isChild($ticket) || !isset($ticket->dateMerged)) ? false : $ticket->dateMerged;
     }
     
     function setDateMerged($ticket, $date){
@@ -365,7 +366,7 @@ class MergingPlugin extends Plugin {
     }
     
     function getChildren($ticket){
-        if(!MergingPlugin::isMaster($ticket))
+        if(!self::isMaster($ticket))
             return array();
         
         $sql='SELECT ticket_id, date_merged FROM '.TICKET_RELATION_TABLE.' WHERE master_id = ' . $ticket->getId();
@@ -374,22 +375,22 @@ class MergingPlugin extends Plugin {
         if(($res=db_query($sql)) && db_num_rows($res))
             while(list($id, $tmpdate)=db_fetch_row($res))
                 if($temp=Ticket::lookup($id)){
-                    MergingPlugin::setDateMerged($temp, $tmpdate);
-                    MergingPlugin::setChild($temp, true);
+                    self::setDateMerged($temp, $tmpdate);
+                    self::setChild($temp, true);
                     $ret[] = $temp;
                 }
         return $ret;
     }
     
     function getMaster($ticket){
-        if(!MergingPlugin::isChild($ticket))
+        if(!self::isChild($ticket))
             return array();
         
         $sql='SELECT master_id FROM '.TICKET_RELATION_TABLE.' WHERE ticket_id = ' . $ticket->getId();
         if(($res=db_query($sql)) && db_num_rows($res)) {
             list($id)=db_fetch_row($res);
             if ($temp=Ticket::lookup($id)) {
-                MergingPlugin::setMaster($temp, true);
+                self::setMaster($temp, true);
                 return $temp;
             }
         }

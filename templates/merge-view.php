@@ -10,7 +10,7 @@
         $("#mergebutton").click(function(){
             $.ajax({
                 type: 'POST',
-                url: '../include/plugins/Merging/ajax.php',
+                url: '../include/{MERGING_INSTALL_PATH}/ajax.php',
                 data: ({
                     master: {MERGING_TICKET_ID},
                     ticket: $("#masterid").val(),
