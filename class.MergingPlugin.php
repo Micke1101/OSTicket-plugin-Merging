@@ -55,7 +55,7 @@ class MergingPlugin extends Plugin {
                         '/<div class="pull-right flush-right">/',
                         $this->getActions($thisstaff));
                 }
-				$result = str_replace("{MERGING_INSTALL_PATH}", self::getInstallPath(), $result);
+                    $html = str_replace("{MERGING_INSTALL_PATH}", self::getInstallPath(), $html);
             }
             print $html;
         });
